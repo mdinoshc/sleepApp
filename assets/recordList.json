@@ -1,0 +1,41 @@
+[
+  {"id": "rec_001",
+    "title": "Monday Morning Meeting",
+    "date": "2025-12-08T09:15:30Z",
+    "duration": "15:45",
+    "filePath": "/recordings/meeting_20251208.mp3",
+    "isFavorite": false
+  },
+  {
+    "id": "rec_002",
+    "title": "Creative Brainstorm",
+    "date": "2025-12-07T14:30:10Z",
+    "duration": "45:20",
+    "filePath": "/recordings/brainstorm_creative_session.mp3",
+    "isFavorite": true
+  },
+  {
+    "id": "rec_003",
+    "title": "Voice Memo - Idea for App",
+    "date": "2025-12-06T18:05:00Z",
+    "duration": "02:10",
+    "filePath": "/recordings/app_idea_memo.mp3",
+    "isFavorite": true
+  },
+  {
+    "id": "rec_004",
+    "title": "Lecture on Dart Programming",
+    "date": "2025-12-05T11:00:00Z",
+    "duration": "90:00",
+    "filePath": "/recordings/dart_lecture_part1.mp3",
+    "isFavorite": false
+  },
+  {
+    "id": "rec_005",
+    "title": "Guitar Riff Practice",
+    "date": "2025-12-04T20:45:55Z",
+    "duration": "05:30",
+    "filePath": "/recordings/guitar_riff_dec04.mp3",
+    "isFavorite": false
+  }
+]
