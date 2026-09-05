@@ -2,15 +2,26 @@ class RecordList {
   final String id;
   final String title;
   final DateTime date;
-  final String duration;
+  final int duration;
   final String filePath;
-  final bool isFavorite;
-
 
   RecordList( {
-    required this.id, required this.title, required this.date, required this.duration, required this.filePath,
-    required this.isFavorite
+    required this.id,
+    required this.title,
+    required this.date,
+    required this.duration,
+    required this.filePath,
 });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'date': date.toIso8601String(),
+      'duration': duration,
+      'filePath': filePath,
+    };
+  }
 
   factory RecordList.fromJson(Map<String, dynamic> json) {
     return RecordList(
@@ -19,7 +30,6 @@ class RecordList {
       date: DateTime.parse(json['date']),
       duration: json['duration'],
       filePath: json['filePath'],
-      isFavorite: json['isFavorite']
     );
   }
 }

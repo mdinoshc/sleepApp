@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:sleepyer/methods/dataBase.dart';
+import 'package:just_audio/just_audio.dart' as ja;
+import 'package:record/record.dart';
 import 'package:sleepyer/methods/functionz.dart';
+import 'package:flutter_audio_visualizer/flutter_audio_visualizer.dart';
 
 void main() {
   runApp(const MyApp());
@@ -45,12 +47,107 @@ class recordPage extends StatefulWidget {
 }
 
 class _recordPageState extends State<recordPage> {
+  // Visualization parameters
+  double _barWidth = 4.0;
 
   final RecordFunctionz recordFunctionz = RecordFunctionz();
-  final dbInstance db_instance = dbInstance();
+  RecordState _recordState = RecordState.stop;
+  double _amplitude = 0.0;
+  Duration _elapsed = Duration.zero;
+  late final Stream<RecordState> _stateStream;
+  // final AudioSource _source = AudioSource();
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    _stateStream = recordFunctionz.onStateChanged;
+
+    // Listen to state changes to update UI
+    _stateStream.listen((state) {
+      setState(() {
+        _recordState = state;
+      });
+    });
+
+    recordFunctionz.onAmplitudeChanged.listen((amp) {
+      setState(() => _amplitude = amp.current);
+    });
+  }
+
+  void showSnackBar(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  Future<void> startRecording() async {
+    final hasPermission = await recordFunctionz.hasPermission();
+    if(!hasPermission) {
+      showSnackBar("Microphone permission denied");
+    }
+
+    setState(() => _elapsed = Duration.zero);
+    await recordFunctionz.startRecord();
+    startTimer();
+  }
+
+  Future<void> stopRecording() async {
+    final path = await recordFunctionz.stopRecord();
+    if (path != null) {
+      stopTimer();
+      showSnackBar("Saved to : $path");
+    }
+  }
+
+  Future<void> togglePause() async {
+    // Note: The 'record' package uses pause/resume which updates the state stream
+    // recordFunctionz should handle the platform calls
+    if(_recordState == RecordState.record) {
+      await recordFunctionz.pauseRecord();
+    } else if(_recordState == RecordState.pause) {
+      await recordFunctionz.resumeRecord();
+    }
+  }
+
+  bool timerRunning = false;
+
+  void startTimer() {
+    timerRunning = true;
+    Future.doWhile(() async {
+      await Future.delayed(Duration(seconds: 1));
+      if(!timerRunning) return false;
+      if(_recordState == RecordState.record) {
+        setState(() {
+          _elapsed = _elapsed + Duration(seconds: 1);
+        });
+      }
+      return timerRunning;
+    });
+  }
+
+  void stopTimer() {
+    timerRunning = false;
+  }
+
+  String get formattedTime {
+    final m = _elapsed.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = _elapsed.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return "$m : $s";
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+    recordFunctionz.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isRecording = _recordState == RecordState.record;
+    final isPaused = _recordState == RecordState.pause;
+
+    String recordButtonText = isRecording ? "STOP" : "START";
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Sleepyer Voice Recorder'),
@@ -58,19 +155,90 @@ class _recordPageState extends State<recordPage> {
       body: Center(
         child: Column(
           children: [
-            ElevatedButton(
-                onPressed: () {
-                  recordFunctionz.startRecord();
-                }, 
-                child: Text('Start')
-            ),
-            Form(
-              child: TextFormField(
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: 'Title',
-                ),
+            AnimatedContainer(
+              duration: Duration(milliseconds: 250),
+              width: 100 + (_amplitude + 60) * 2,
+              height: 100 + (_amplitude + 60) * 2,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isRecording
+                    ? Colors.red.withOpacity(0.2)
+                    : Colors.grey.withOpacity(0.1),
+                border: Border.all(
+                  color: isRecording ? Colors.red : Colors.grey,
+                  width: 3,
+                )
               ),
+              child: Icon(
+                isRecording ? Icons.mic : Icons.mic_none,
+                size: 50,
+                color: isRecording ? Colors.red : Colors.grey,
+              ),
+            ),
+            SizedBox(height: 20.0,),
+            Text(formattedTime),
+            SizedBox(height: 20.0,),
+            Text(
+              isRecording ? "Recording" : isPaused ? "Paused" : "Ready",
+              style: TextStyle(
+                color: isRecording ? Colors.red : Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 20.0),
+            SizedBox(
+              height: 100,
+              width: double.infinity,
+              child: (isRecording || isPaused)
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      /*child: AudioVisualizer(
+                        // Map the single amplitude to a list for the visualizer
+                        waveData: [_amplitude],
+                        height: 100,
+                        width: MediaQuery.of(context).size.width,
+                        color: Colors.red,
+                        gap: 2,
+                      ),*/
+                // child: AudioVisualizer(
+                //   audioSource: AudioSource,
+                // ),
+                    )
+                  : Center(
+                      child: Container(
+                        height: 2,
+                        width: double.infinity,
+                        margin: const EdgeInsets.symmetric(horizontal: 40),
+                        color: Colors.grey.withOpacity(0.3),
+                      ),
+                    ),
+            ),
+
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                    onPressed: null, // Logic for previous
+                    child: Text("Previous")
+                ),
+                ElevatedButton(
+                    onPressed: () {
+                      if(isRecording) {
+                        stopRecording();
+                      } else {
+                        startRecording();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isRecording ? Colors.red : null,
+                    ),
+                    child: Text(recordButtonText)
+                ),
+                ElevatedButton(
+                    onPressed: null, // Logic for next
+                    child: Text("Next")
+                ),
+              ],
             ),
           ],
         ),
